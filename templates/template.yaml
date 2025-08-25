@@ -1,0 +1,35 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  AWS-LexChat-Serverless-Conversational-AI
+
+  A serverless chatbot built with AWS Lex, Lambda, and CloudFormation.
+
+Globals:
+  Function:
+    Timeout: 3
+
+Resources:
+  LexChatbotFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: lambda_function.lambda_handler
+      Runtime: python3.9
+      Architectures:
+        - x86_64
+      Events:
+        Lex:
+          Type: Lex
+          Properties:
+            BotName: "LexChatbot"
+            IntentName: "LexChatbotIntent"
+            Alias: "$LATEST"
+
+Outputs:
+  LexChatbotFunction:
+    Description: "Lex Chatbot Lambda Function ARN"
+    Value: !GetAtt LexChatbotFunction.Arn
+  LexChatbotFunctionIamRole:
+    Description: "Implicit IAM Role created for Lex Chatbot function"
+    Value: !GetAtt LexChatbotFunctionRole.Arn
