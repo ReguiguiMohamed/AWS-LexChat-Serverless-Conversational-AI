@@ -54,7 +54,7 @@ sam deploy --guided
 
 ## Usage
 
-Once deployed, you can interact with the chatbot through the AWS Lex console or by integrating it with your applications.
+Once deployed, you can interact with the chatbot through the AWS Lex console or by integrating it with your applications. The current Lambda handler responds to common greetings with a short cultural or historical fact and otherwise encourages users to ask about world history.
 
 ## Contributing
 
