@@ -18,13 +18,145 @@ Resources:
       Runtime: python3.9
       Architectures:
         - x86_64
-      Events:
-        Lex:
-          Type: Lex
-          Properties:
-            BotName: "LexChatbot"
-            IntentName: "LexChatbotIntent"
-            Alias: "$LATEST"
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - "lexv2:*"
+              Resource: "*"
+
+  BankingAssistantBot:
+    Type: "AWS::Lex::Bot"
+    Properties:
+      Name: "BankingAssistantBot"
+      DataPrivacy:
+        ChildDirected: false
+      IdleSessionTTLInSeconds: 300
+      RoleArn: !GetAtt LexChatbotFunctionRole.Arn
+      BotLocales:
+        - LocaleId: "en_US"
+          NluConfidenceThreshold: 0.40
+          SlotTypes:
+            - Name: "AccountTypeSlotType"
+              ValueSelectionSetting:
+                ResolutionStrategy: "TOP_RESOLUTION"
+              SlotTypeValues:
+                - SampleValue: "checking"
+                - SampleValue: "savings"
+                - SampleValue: "credit"
+                - SampleValue: "loan"
+            - Name: "BankingOperationSlotType"
+              ValueSelectionSetting:
+                ResolutionStrategy: "TOP_RESOLUTION"
+              SlotTypeValues:
+                - SampleValue: "balance"
+                - SampleValue: "transfer"
+                - SampleValue: "deposit"
+                - SampleValue: "withdrawal"
+          Intents:
+            - Name: "GreetingIntent"
+              SampleUtterances:
+                - Utterance: "hello"
+                - Utterance: "hi"
+                - Utterance: "good morning"
+                - Utterance: "good afternoon"
+                - Utterance: "good evening"
+              FulfillmentCodeHook:
+                Enabled: true
+            - Name: "BankingInquiryIntent"
+              SampleUtterances:
+                - Utterance: "I want to {BankingOperation} from my {AccountType} account"
+                - Utterance: "what is the {BankingOperation} of my {AccountType} account"
+                - Utterance: "can I {BankingOperation} {Amount} dollars"
+                - Utterance: "show me my {AccountType} account {BankingOperation}"
+              Slots:
+                - Name: "AccountType"
+                  SlotTypeName: "AccountTypeSlotType"
+                  ValueElicitationSetting:
+                    SlotConstraint: "Required"
+                    PromptSpecification:
+                      MaxRetries: 2
+                      MessageGroupsList:
+                        - Message:
+                            PlainTextMessage:
+                              Value: "Which account would you like to use? (checking, savings, credit, loan)"
+                - Name: "BankingOperation"
+                  SlotTypeName: "BankingOperationSlotType"
+                  ValueElicitationSetting:
+                    SlotConstraint: "Required"
+                    PromptSpecification:
+                      MaxRetries: 2
+                      MessageGroupsList:
+                        - Message:
+                            PlainTextMessage:
+                              Value: "What would you like to do? (balance, transfer, deposit, withdrawal)"
+                - Name: "Amount"
+                  SlotTypeName: "AMAZON.Number"
+                  ValueElicitationSetting:
+                    SlotConstraint: "Optional"
+              FulfillmentCodeHook:
+                Enabled: true
+            - Name: "TransferMoneyIntent"
+              SampleUtterances:
+                - Utterance: "transfer money"
+                - Utterance: "I want to transfer money from my {fromAccountType} to my {toAccountType}"
+                - Utterance: "transfer {transferAmount} dollars from {fromAccountType} to {toAccountType}"
+              Slots:
+                - Name: "fromAccountType"
+                  SlotTypeName: "AccountTypeSlotType"
+                  ValueElicitationSetting:
+                    SlotConstraint: "Required"
+                    PromptSpecification:
+                      MaxRetries: 2
+                      MessageGroupsList:
+                        - Message:
+                            PlainTextMessage:
+                              Value: "Which account do you want to transfer from?"
+                - Name: "toAccountType"
+                  SlotTypeName: "AccountTypeSlotType"
+                  ValueElicitationSetting:
+                    SlotConstraint: "Required"
+                    PromptSpecification:
+                      MaxRetries: 2
+                      MessageGroupsList:
+                        - Message:
+                            PlainTextMessage:
+                              Value: "Which account do you want to transfer to?"
+                - Name: "transferAmount"
+                  SlotTypeName: "AMAZON.Number"
+                  ValueElicitationSetting:
+                    SlotConstraint: "Required"
+                    PromptSpecification:
+                      MaxRetries: 2
+                      MessageGroupsList:
+                        - Message:
+                            PlainTextMessage:
+                              Value: "How much money do you want to transfer?"
+              IntentConfirmationSetting:
+                PromptSpecification:
+                  MaxRetries: 2
+                  MessageGroupsList:
+                    - Message:
+                        PlainTextMessage:
+                          Value: "Are you sure you want to transfer {transferAmount} from {fromAccountType} to {toAccountType}?"
+                DeclinationResponse:
+                  MessageGroupsList:
+                    - Message:
+                        PlainTextMessage:
+                          Value: "Okay, I have cancelled the transaction."
+              FulfillmentCodeHook:
+                Enabled: true
+          FallbackIntent:
+            FulfillmentCodeHook:
+              Enabled: true
+
+  LexChatbotFunctionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt LexChatbotFunction.Arn
+      Principal: lexv2.amazonaws.com
+      SourceArn: !Sub "arn:aws:lex:${AWS::Region}:${AWS::AccountId}:bot-alias/${BankingAssistantBot.Id}/*"
 
 Outputs:
   LexChatbotFunction:
