@@ -1,54 +1,94 @@
-"""Unit tests for the Lambda handler."""
+"""Unit tests for the banking chatbot Lambda handler."""
+
+from __future__ import annotations
 
 import unittest
 
-from src import lambda_function
+import sys
+from pathlib import Path
+
+sys.path.append(str(Path(__file__).resolve().parent.parent / "src"))
+import lambda_function
+
+
+def lex_v2_event(
+    intent_name: str,
+    *,
+    slots: dict | None = None,
+    user_id: str = "user123",
+    confirmation_state: str | None = None,
+    session_attributes: dict | None = None,
+) -> dict:
+    """Construct a minimal Lex V2 event for testing."""
+
+    return {
+        "interpretations": [{"intent": {"name": intent_name, "slots": slots or {}}}],
+        "sessionState": {
+            "intent": {
+                "name": intent_name,
+                "slots": slots or {},
+                "confirmationState": confirmation_state,
+            },
+            "sessionAttributes": session_attributes or {},
+        },
+        "userId": user_id,
+    }
 
 
 class TestLambdaFunction(unittest.TestCase):
     """Tests for :func:`lambda_function.lambda_handler`."""
 
-    def _base_event(self, transcript: str) -> dict:
-        return {
-            "currentIntent": {
-                "name": "LexChatbotIntent",
-                "slots": {},
-                "confirmationStatus": "None",
-            },
-            "bot": {
-                "name": "LexChatbot",
-                "alias": "$LATEST",
-                "version": "$LATEST",
-            },
-            "userId": "test_user",
-            "inputTranscript": transcript,
-            "invocationSource": "FulfillmentCodeHook",
-            "outputDialogMode": "Text",
-            "messageVersion": "1.0",
-            "sessionAttributes": {},
+    def test_greeting_intent_returns_user_name(self) -> None:
+        event = lex_v2_event("GreetingIntent")
+        response = lambda_function.lambda_handler(event, None)
+
+        self.assertEqual(
+            response["sessionState"]["intent"]["state"], "Fulfilled"
+        )
+        self.assertIn(
+            "John", response["messages"][0]["content"]
+        )
+
+    def test_banking_inquiry_balance_known_account(self) -> None:
+        slots = {
+            "AccountType": {"value": {"interpretedValue": "checking"}},
+            "BankingOperation": {"value": {"interpretedValue": "balance"}},
         }
+        event = lex_v2_event("BankingInquiryIntent", slots=slots)
+        response = lambda_function.lambda_handler(event, None)
 
-    def test_greeting_response(self) -> None:
-        event = self._base_event("Hello")
-        response = lambda_function.lambda_handler(event, {})
+        self.assertIn("$1500.75", response["messages"][0]["content"])
 
-        self.assertEqual(response["dialogAction"]["type"], "Close")
-        self.assertEqual(response["dialogAction"]["fulfillmentState"], "Fulfilled")
-        self.assertIn("Olympic Games", response["dialogAction"]["message"]["content"])
+    def test_transfer_money_intent_confirmed(self) -> None:
+        slots = {
+            "fromAccountType": {"value": {"interpretedValue": "checking"}},
+            "toAccountType": {"value": {"interpretedValue": "savings"}},
+            "transferAmount": {"value": {"interpretedValue": "100"}},
+        }
+        event = lex_v2_event(
+            "TransferMoneyIntent", slots=slots, confirmation_state="Confirmed"
+        )
+        response = lambda_function.lambda_handler(event, None)
 
-    def test_generic_response(self) -> None:
-        event = self._base_event("Tell me a fact")
-        response = lambda_function.lambda_handler(event, {})
+        self.assertIn("Successfully transferred", response["messages"][0]["content"])
 
-        self.assertEqual(response["dialogAction"]["type"], "Close")
-        self.assertEqual(response["dialogAction"]["fulfillmentState"], "Fulfilled")
-        self.assertTrue(
-            response["dialogAction"]["message"]["content"].startswith(
-                "Thanks for your message"
-            )
+    def test_fallback_intent(self) -> None:
+        event = lex_v2_event("FallbackIntent")
+        response = lambda_function.lambda_handler(event, None)
+
+        self.assertIn(
+            "didn't understand", response["messages"][0]["content"]
+        )
+
+    def test_authentication_failure(self) -> None:
+        event = lex_v2_event("GreetingIntent", user_id="unknown")
+        response = lambda_function.lambda_handler(event, None)
+
+        self.assertEqual(
+            response["sessionState"]["intent"]["state"], "Failed"
         )
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     unittest.main()
 
