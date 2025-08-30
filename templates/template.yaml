@@ -13,17 +13,23 @@ Resources:
   LexChatbotFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: src/
+      CodeUri: ../src/
       Handler: lambda_function.lambda_handler
       Runtime: python3.9
       Architectures:
         - x86_64
       Policies:
-        - Statement:
-            - Effect: Allow
-              Action:
-                - "lexv2:*"
-              Resource: "*"
+        - SAMPolicyTemplate:
+            ManagedPolicyName: AWSLambdaBasicExecutionRole
+        - IAMPolicy:
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - "lexv2:RecognizeText"
+                    - "lexv2:StartConversation"
+                  Resource: "*"
 
   BankingAssistantBot:
     Type: "AWS::Lex::Bot"
@@ -119,7 +125,7 @@ Resources:
                     PromptSpecification:
                       MaxRetries: 2
                       MessageGroupsList:
-                        - Message:
+                        - Message: 
                             PlainTextMessage:
                               Value: "Which account do you want to transfer to?"
                 - Name: "transferAmount"
@@ -150,7 +156,7 @@ Resources:
             FulfillmentCodeHook:
               Enabled: true
 
-  LexChatbotFunctionPermission:
+  LexChatbotFunctionPermission: 
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction

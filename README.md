@@ -38,9 +38,9 @@ AWS-LexChat-Serverless-Conversational-AI/
     ```bash
     cd AWS-LexChat-Serverless-Conversational-AI
     ```
-3.  Install dependencies (if any):
+3.  Install dependencies:
     ```bash
-    # (e.g., pip install -r requirements.txt)
+    pip install -r src/requirements.txt
     ```
 
 ## Deployment
@@ -50,6 +50,14 @@ Deploy the application using AWS SAM:
 ```bash
 sam build
 sam deploy --guided
+```
+
+## Running the tests
+
+To run the tests, run the following command in the root directory:
+
+```bash
+python -m unittest tests/test_lambda_function.py
 ```
 
 ## Usage

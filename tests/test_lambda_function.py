@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import patch
 
 import sys
 from pathlib import Path
@@ -87,6 +88,42 @@ class TestLambdaFunction(unittest.TestCase):
         self.assertEqual(
             response["sessionState"]["intent"]["state"], "Failed"
         )
+
+    def test_banking_inquiry_unknown_account(self) -> None:
+        slots = {
+            "AccountType": {"value": {"interpretedValue": "unknown"}},
+            "BankingOperation": {"value": {"interpretedValue": "balance"}},
+        }
+        event = lex_v2_event("BankingInquiryIntent", slots=slots)
+        response = lambda_function.lambda_handler(event, None)
+
+        self.assertIn("You do not have a unknown account.", response["messages"][0]["content"])
+
+    def test_transfer_money_insufficient_funds(self) -> None:
+        slots = {
+            "fromAccountType": {"value": {"interpretedValue": "checking"}},
+            "toAccountType": {"value": {"interpretedValue": "savings"}},
+            "transferAmount": {"value": {"interpretedValue": "2000"}},
+        }
+        event = lex_v2_event(
+            "TransferMoneyIntent", slots=slots, confirmation_state="Confirmed"
+        )
+        response = lambda_function.lambda_handler(event, None)
+
+        self.assertIn("Insufficient funds", response["messages"][0]["content"])
+
+    def test_transfer_money_denied(self) -> None:
+        slots = {
+            "fromAccountType": {"value": {"interpretedValue": "checking"}},
+            "toAccountType": {"value": {"interpretedValue": "savings"}},
+            "transferAmount": {"value": {"interpretedValue": "100"}},
+        }
+        event = lex_v2_event(
+            "TransferMoneyIntent", slots=slots, confirmation_state="Denied"
+        )
+        response = lambda_function.lambda_handler(event, None)
+
+        self.assertIn("cancelled the transaction", response["messages"][0]["content"])
 
 
 if __name__ == "__main__":  # pragma: no cover

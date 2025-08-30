@@ -1,0 +1,13 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "lexv2:RecognizeText",
+                "lexv2:StartConversation"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
