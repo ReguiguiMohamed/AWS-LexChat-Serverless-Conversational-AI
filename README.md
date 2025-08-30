@@ -64,10 +64,6 @@ python -m unittest tests/test_lambda_function.py
 
 Once deployed, you can interact with the chatbot through the AWS Lex console or by integrating it with your applications. The current Lambda handler responds to common greetings with a short cultural or historical fact and otherwise encourages users to ask about world history.
 
-## Contributing
-
-Contributions are welcome! Please open an issue or submit a pull request.
-
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
